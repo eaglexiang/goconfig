@@ -2,7 +2,7 @@ package goconfig
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -50,9 +50,10 @@ func (c config) Set(key string, value interface{}) (err error) {
 func (c config) forceGetLastSub(path []string) (sub config, err error) {
 	sub = c
 
-	for _, subKey := range path {
+	for i, subKey := range path {
 		sub, err = sub.forceGetSub(subKey)
 		if err != nil {
+			err = fmt.Errorf("%w: %s", err, strings.Join(path[:i], "."))
 			break
 		}
 	}
@@ -72,7 +73,10 @@ func (c config) forceGetSub(key string) (sub config, err error) {
 
 	sub, ok = subItem.(config)
 	if !ok {
-		err = errNotSubConfig(sub)
+		sub, ok = subItem.(map[string]interface{})
+	}
+	if !ok {
+		err = errNotSubConfig(sub, key)
 	}
 
 	return
@@ -89,9 +93,6 @@ func (c config) Get(key string) (value interface{}, err error) {
 	path, key := splitPath(key)
 
 	sub, err := c.getLastSub(path)
-	if errors.Is(err, ErrNoKey) {
-		err = errNoKey(key)
-	}
 	if err != nil {
 		return
 	}
@@ -107,9 +108,10 @@ func (c config) Get(key string) (value interface{}, err error) {
 func (c config) getLastSub(path []string) (sub config, err error) {
 	sub = c
 
-	for _, subKey := range path {
+	for i, subKey := range path {
 		sub, err = sub.getSub(subKey)
 		if err != nil {
+			err = fmt.Errorf("%w: %s", err, strings.Join(path[:i], "."))
 			break
 		}
 	}
@@ -126,14 +128,17 @@ func (c config) getSub(key string) (sub config, err error) {
 
 	sub, ok = subItem.(config)
 	if !ok {
-		err = errNotSubConfig(sub)
+		sub, ok = subItem.(map[string]interface{})
+	}
+	if !ok {
+		err = errNotSubConfig(subItem, key)
 	}
 
 	return
 }
 
 func (c config) Bytes() (b []byte, err error) {
-	b, err = json.Marshal(c)
+	b, err = json.MarshalIndent(c, "", "    ")
 	return
 }
 
