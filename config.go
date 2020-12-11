@@ -13,11 +13,12 @@ type Config interface {
 	Import(b []byte) (err error)
 }
 
-func New(filename string) (c Config, err error) {
+func New(filename string) (c EasyConfig, err error) {
 	config := newConfig()
 	persistC, err := newPersistConfig(config, filename)
 	syncC := newSyncConfig(persistC)
-	c = syncC
+	easyC := newEasyConfig(syncC)
+	c = easyC
 	return
 }
 
